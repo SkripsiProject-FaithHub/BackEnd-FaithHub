@@ -80,14 +80,7 @@ async function authMiddleware(req, res, next) {
         return res.status(401).json({ message: 'Authorization token missing' });
     }
 
-    // jwt.verify(token, secretKey, (err, decoded) => {
-    //     if (err) {
-    //         return res.status(401).json({ message: 'Invalid token' });
-    //     }
-
-    //     req.userId = decoded.userId;
-    //     next();
-    // });
+ 
     try {
         const decoded = jwt.verify(token, secretKey);
         const user = await UserModel.findById(decoded.userId);
