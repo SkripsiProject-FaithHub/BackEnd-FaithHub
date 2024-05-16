@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const validator = require('validator');
+const { v4: uuidv4 } = require('uuid');
 
 const UserModel = require('./user_model');
 
@@ -9,9 +10,6 @@ const secretKey = process.env.SECRET_KEY;
 
 async function registerUser(req, res) {
     const { name ,email, password, religion } = req.body;
-    // console.log(req.body);
-    console.log(email);
-    console.log(password);
     try {
         // Validate email
         // if (!validator.isEmail(email)) {
@@ -31,7 +29,9 @@ async function registerUser(req, res) {
 
         // Create user
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new UserModel({ name, email, password: hashedPassword, religion });
+        const userId = uuidv4();
+        const newUser = new UserModel({ userId, name, email, password: hashedPassword, religion });
+        
         await newUser.save();
 
         res.status(201).json({ message: 'User registered successfully' });
@@ -73,21 +73,27 @@ function isStrongPassword(password) {
     return specialChars.test(password);
 }
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
         return res.status(401).json({ message: 'Authorization token missing' });
     }
 
-    jwt.verify(token, secretKey, (err, decoded) => {
-        if (err) {
-            return res.status(401).json({ message: 'Invalid token' });
+ 
+    try {
+        const decoded = jwt.verify(token, secretKey);
+        const user = await UserModel.findById(decoded.userId);
+
+        if (!user) {
+            return res.status(401).json({ message: 'User not found' });
         }
 
-        req.userId = decoded.userId;
+        req.user = user;
         next();
-    });
+    } catch (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+    }
 }
 
 function protectedRoute(req, res) {
