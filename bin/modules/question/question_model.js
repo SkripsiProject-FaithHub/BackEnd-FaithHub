@@ -30,6 +30,10 @@ const doubtSchema = new mongoose.Schema({
         type: Array,
         default: [],
     },
+    replyCount:{
+        type: Number,
+        default: 0,
+    },
     downVotes: {
         type: Array,
         default: [],

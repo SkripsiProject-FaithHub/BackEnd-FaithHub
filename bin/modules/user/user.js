@@ -43,6 +43,7 @@ async function registerUser(req, res) {
 
 async function login(req, res) {
     const { email, password } = req.body;
+    console.log("login requested");
 
     try {
         // Find user by email
@@ -54,7 +55,7 @@ async function login(req, res) {
         // Compare passwords
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-            return res.status(400).json({ message: 'Incorrect password' });
+            return res.status(401).json({ message: 'Incorrect password' });
         }
 
         // Generate JWT token
@@ -65,6 +66,11 @@ async function login(req, res) {
         console.error('Error logging in:', error);
         res.status(500).json({ message: 'Couldn\'t login' });
     }
+}
+
+async function myProfile(req, res) {
+    res.status(200).json({ data: req.user
+    });
 }
 
 function isStrongPassword(password) {
@@ -104,5 +110,6 @@ module.exports = {
     registerUser,
     login,
     authMiddleware,
-    protectedRoute
+    protectedRoute,
+    myProfile
 };
