@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 async function createArticle(req, res) {
     const { articleTitle, description, tags, media} = req.body;
     const user = req.user;
-    console.log(articleTitle, description, tags);
+    // console.log(articleTitle, description, tags);
     try {
          // Validate question duplicates
         const articleCheck = await Article.findOne({articleTitle});
@@ -64,25 +64,25 @@ async function getAllArticle(req, res) {
 }
 
 async function getArticleDetail(req, res) {
-    const { questionId } = req.params;
-    // console.log(questionId);
+    const { articleId } = req.params;
+    // console.log(articleId);
     try {
-        const question = await Question.findOne({questionId: questionId});
-        question.views += 1;
-
-        question.save();
-        const replyCount = await Reply.countDocuments({replyToPost: question.questionId});
+        const article = await Article.findOne({articleId: articleId});
+        article.views += 1;
+        
+        article.save();
+        const replyCount = await Reply.countDocuments({replyToPost: article.articleId});
         // console.log(replyCount);
-        const questionReplies = await Reply.find({ replyToPost: question.questionId }).sort({ createdAt: -1 });
+        const articleReplies = await Reply.find({ replyToPost: article.articleId }).sort({ createdAt: -1 });
         const replyInfo = [];
 
 
-        for (const reply of questionReplies)
+        for (const reply of articleReplies)
             replyInfo.push({ replyData: reply, ownerInfo: await User.findOne({userId: reply.creatorId}) });
 
-        const owner = await User.findOne({userId: question.creatorId});
+        const owner = await User.findOne({userId: article.creatorId});
         res.status(200).json({ 
-            questionData: question, 
+            articleData: article, 
             replyCount: replyCount,
             ownerInfo: owner, 
             replies: replyInfo
@@ -94,8 +94,51 @@ async function getArticleDetail(req, res) {
     }
 }
 
+async function addReply(req, res) {
+    const { articleId } = req.params;
+    const { reply } = req.body;
+    const user = req.user;
+    // console.log(questionId, reply);
+    // console.log(user);
+    try {
+        const article = await Article.findOne({ articleId });
+        const newReply = await Reply.create({
+            replyId: uuidv4(),
+            creatorId: user.userId,
+            creatorName: user.name,
+            reply: reply,
+            replyToPost: articleId,
+            createdAt: Date.now(),
+        });
+        newReply.save();
+        // console.log(question);
+        // console.log(newReply);
+        const _user = await User.findOne({userId: user.userId});
+       
+        _user.repliesCount += 1;
+        _user.save();
+        
+        // const replies = await Reply.find({ replyToPost: question.questionId }).sort({ createdAt: -1 });
+
+        // const replyInfo = [];
+        // for (const reply of replies)
+        //     replyInfo.push({ replyData: reply, ownerInfo: user} );
+
+        // res.status(201).json({
+        //     doubtData: question, ownerInfo: user, replies: replyInfo
+        // });
+        res.status(201).json({
+            Message: "Reply Added !!!", newReply
+        });
+    } catch (err) {
+        // console.log(err);
+        res.status(500).json("Couldn't add reply!! Please try again!");
+    }
+}
+
 module.exports = {
     createArticle,
     getAllArticle,
-    getArticleDetail
+    getArticleDetail,
+    addReply
 };

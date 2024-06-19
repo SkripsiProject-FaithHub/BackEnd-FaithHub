@@ -206,8 +206,10 @@ async function getAllQuestion(req, res) {
     try {
         const questions = await Question.find().sort({ createdAt: -1 });
         const response = [];
-
+        
         for (const question of questions) {
+            const replyCount = await Reply.countDocuments({replyToPost: question.questionId});
+            question.replyCount = replyCount;
             const userDetails = await User.findOne({userId: question?.creatorId});
             const reqInfo = new Object({
                 name: userDetails?.name,
@@ -220,6 +222,54 @@ async function getAllQuestion(req, res) {
     } catch (err) {
         // console.log(err);
         res.status(500).json("Error occurred while processing! Please try again!");
+    }
+}
+
+async function getQuestionbyTags(req, res) {
+    const {tags} = req.body
+    
+    try {
+        const questions = await Question.find({tags: tags}).sort({ createdAt: -1 });
+        const response = [];
+        for (const question of questions) {
+            const userDetails = await User.findOne({userId: question?.creatorId});
+            const reqInfo = new Object({
+                name: userDetails?.name,
+                // photo: userDetails?.photo,
+                // reputation: userDetails?.reputation
+            });
+            response.push({ doubtDetails: question, ownerInfo: reqInfo });
+        }
+        res.status(200).json(response);
+        // const questions = await Question.find({tags: tags});
+        // res.status(200).json({doubtDetails: questions});
+    } catch (err) {
+        console.error(err);
+        res.status(500).json("Error occurred while processing! Please try again");
+    }
+}
+
+async function getUserQuestion(req, res) {
+    const user = req.user
+    
+    try {
+        const questions = await Question.find({creatorId: user.userId}).sort({ createdAt: -1 });
+        const response = [];
+        for (const question of questions) {
+            const userDetails = await User.findOne({userId: question?.creatorId});
+            const reqInfo = new Object({
+                name: userDetails?.name,
+                // photo: userDetails?.photo,
+                // reputation: userDetails?.reputation
+            });
+            response.push({ doubtDetails: question, ownerInfo: reqInfo });
+        }
+        res.status(200).json(response);
+        // const questions = await Question.find({tags: tags});
+        // res.status(200).json({doubtDetails: questions});
+    } catch (err) {
+        console.error(err);
+        res.status(500).json("Error occurred while processing! Please try again");
     }
 }
 
@@ -238,7 +288,7 @@ async function getQuestionDetail(req, res) {
 
 
         for (const reply of questionReplies)
-            replyInfo.push({ replyData: reply, ownerInfo: await User.findOne({userId: reply.creatorId}) });
+            replyInfo.push({ replyData: {reply, ownerInfo: await User.findOne({userId: reply.creatorId}) } });
 
         const owner = await User.findOne({userId: question.creatorId});
         res.status(200).json({ 
@@ -253,6 +303,7 @@ async function getQuestionDetail(req, res) {
         res.status(500).json("Internal server error! Please try again!");
     }
 }
+
 
 async function voteToReply(req, res) {
     const { doubt, reply, type, user } = req.body;
@@ -335,5 +386,7 @@ async function voteToReply(req, res) {
         getAllQuestion,
         getQuestionDetail,
         voteToReply,
-        sortReplies
+        sortReplies,
+        getQuestionbyTags,
+        getUserQuestion
     };

@@ -9,6 +9,8 @@ router.route("/delete/:questionId").delete(authController.authMiddleware, doubtC
 router.route("/reply/:questionId").post(authController.authMiddleware, doubtController.addReply);
 router.route("/vote/:questionId").post(authController.authMiddleware, doubtController.vote);
 router.route("/fetchAll").get(authController.authMiddleware, doubtController.getAllQuestion);
+router.route("/getQuestionbyTags").post(authController.authMiddleware ,doubtController.getQuestionbyTags); 
+router.route("/getUserQuestion").get(authController.authMiddleware ,doubtController.getUserQuestion); 
 router.route("/getDetail/:questionId").get(authController.authMiddleware, doubtController.getQuestionDetail);
 router.route("/sortReplies/:questionId").post(authController.authMiddleware, doubtController.sortReplies);
 
