@@ -59,7 +59,8 @@ async function login(req, res) {
         }
 
         // Generate JWT token
-        const token = jwt.sign({ userId: user._id }, secretKey, { expiresIn: '24h' });
+
+        const token = jwt.sign({ userId: user.userId }, secretKey, { expiresIn: '24h' });
 
         res.json({ token, message: 'Login success' });
     } catch (error) {
@@ -89,8 +90,7 @@ async function authMiddleware(req, res, next) {
  
     try {
         const decoded = jwt.verify(token, secretKey);
-        const user = await UserModel.findById(decoded.userId);
-
+        const user = await UserModel.findOne({userId: decoded.userId});
         if (!user) {
             return res.status(401).json({ message: 'User not found' });
         }
