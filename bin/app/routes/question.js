@@ -13,5 +13,7 @@ router.route("/getQuestionbyTags").post(authController.authMiddleware ,doubtCont
 router.route("/getUserQuestion").get(authController.authMiddleware ,doubtController.getUserQuestion); 
 router.route("/getDetail/:questionId").get(authController.authMiddleware, doubtController.getQuestionDetail);
 router.route("/sortReplies/:questionId").post(authController.authMiddleware, doubtController.sortReplies);
+router.route("/getTags").get(authController.authMiddleware ,doubtController.getTags); 
+router.route("/getAllTags").get(authController.authMiddleware ,doubtController.getAllTags); 
 
 module.exports = router;

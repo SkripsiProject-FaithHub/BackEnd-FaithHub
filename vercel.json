@@ -1,0 +1,33 @@
+{
+    "version": 2,
+    "builds": [
+      {
+        "src": "index.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/api/auth/(login|signup|myProfile)",
+        "methods": ["POST", "GET"],
+        "dest": "/bin/app/routes/user.js"
+      },
+      {
+        "src": "/api/question/(create|update|delete|reply|vote|fetchAll|getTags|getAllTags|getQuestionbyTags|getUserQuestion|getDetail|sortReplies)/:questionId*",
+        "methods": ["POST", "PUT", "DELETE", "GET"],
+        "dest": "/bin/app/routes/question.js"
+      },
+      {
+        "src": "/api/article/(createArticle|get/all|get/:articleId|reply/:articleId|vote/:articleId)",
+        "methods": ["POST", "GET"],
+        "dest": "/bin/app/routes/article.js"
+      },
+      {
+        "handle": "filesystem"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/index.js"
+      }
+    ]
+  }

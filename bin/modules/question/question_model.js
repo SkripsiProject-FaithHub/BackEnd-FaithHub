@@ -22,6 +22,10 @@ const doubtSchema = new mongoose.Schema({
         type: Array,
         default: [],
     },
+    religion: {
+        type: String
+      }
+    ,
     createdAt: {
         type: Date,
         default: Date.now(),

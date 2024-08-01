@@ -4,48 +4,139 @@ const Question = require('../question/question_model');
 const User = require('../user/user_model');
 const Reply = require('../question/replyModel');
 const { v4: uuidv4 } = require('uuid');
+const Tags = require('./tags_model'); // Adjust path accordingly
 // const catchAsync = require('../utils/catchAsync');
 
 // const secretKey = process.env.SECRET_KEY;
 
-async function createQuestion(req, res) {
-    const { questionTitle, description, tags, media} = req.body;
-    const user = req.user;
-    // console.log(user);
+
+
+// async function createOrAddTags(religion, newTags) {
+//     try {
+//         let tagsDocument = await Tags.findOne({ religion });
+
+//         if (!tagsDocument) {
+//             tagsDocument = await Tags.create({ religion, tags: Array.isArray(newTags) ? newTags : [newTags] });
+//         } else {
+//             // Ensure newTags is an array, then push each tag into the existing tags array
+//             const tagsToAdd = Array.isArray(newTags) ? newTags : [newTags];
+//             tagsToAdd.forEach(tag => {
+//                 tagsDocument.tags.push(tag);
+//             });
+//             await tagsDocument.save();
+//         }
+//     } catch (err) {
+//         throw new Error(`Failed to create or add tags for religion ${religion}: ${err.message}`);
+//     }
+// }
+
+async function createOrAddTags(religion, newTags) {
     try {
-         // Validate question duplicates
-        const questionCheck = await Question.findOne({questionTitle});
-    
+        // Fetch the existing tags document for the specified religion
+        let tagsDocument = await Tags.findOne({ religion });
+
+        // If no document exists for the religion, create a new one
+        if (!tagsDocument) {
+            tagsDocument = await Tags.create({ religion, tags: [] });
+        }
+
+        // Create a set of existing tags for quick lookup
+        const existingTags = new Set(tagsDocument.tags);
+
+        // Iterate over each new tag
+        for (const tag of newTags) {
+            // Only add the tag if it doesn't already exist
+            if (!existingTags.has(tag)) {
+                tagsDocument.tags.push(tag);
+                existingTags.add(tag); // Add to the set to avoid duplicates
+            }
+        }
+
+        // Save the updated tags document
+        await tagsDocument.save();
+    } catch (err) {
+        throw new Error(`Failed to create or add tags for religion ${religion}: ${err.message}`);
+    }
+}
+
+
+async function createQuestion(req, res) {
+    const { questionTitle, description, tags, media } = req.body;
+    const user = req.user;
+
+    try {
+        const questionCheck = await Question.findOne({ questionTitle });
+
         if (questionCheck) {
             return res.status(400).json({ message: 'Sudah ada pertanyaan yang sama !!!' });
         }
-        if(questionTitle){
+
+        if (questionTitle) {
             const newQuestion = await Question.create({
                 questionId: uuidv4(),
-                questionTitle: questionTitle,
-                description: description,
-                tags: tags,
+                questionTitle,
+                description,
+                religion: user.religion,
+                tags,
                 creatorId: user.userId,
                 createdAt: Date.now(),
-                // media: media,
             });
-            // console.log(newQuestion);
-            const owner = await User.findOne({userId: user.userId});
+
+            const owner = await User.findOne({ userId: user.userId });
             owner.questionCount += 1;
-            owner.save();
-            // const newQuestion = new UserModel({ name, email, password: hashedPassword, religion });
-            // await newQuestion.save();
-    
-            // res.status(201).json({ message: 'User registered successfully' });
+            await owner.save();
+
+            // Call createOrAddTags function to update tags for the user's religion
+            await createOrAddTags(owner.religion, tags);
+
             const response = {
                 message: 'Question created successfully',
-                question: newQuestion 
+                question: newQuestion,
             };
-            res.status(201).json(response);
+
+            return res.status(201).json(response);
         }
     } catch (err) {
-        // console.log(err);
-        res.status(500).json("Couldn't create Question!! Please try again!");
+        console.error(err);
+        return res.status(500).json("Couldn't create Question!! Please try again!");
+    }
+}
+
+async function getTags(req, res) {
+    const { query } = req.query;
+    const user = req.user;
+
+    try {
+        const tagsDocument = await Tags.findOne({religion: user.religion });
+        
+        if (!tagsDocument) {
+            return res.status(404).json({ message: 'No tags found for this religion' });
+        }
+        const tags = tagsDocument.tags ;
+        console.log(tagsDocument.tags);
+        const matchedTags = tags.filter(tag =>
+            tag.toLowerCase().includes(query.toLowerCase())
+        );
+
+        return res.status(200).json(matchedTags);
+    } catch (err) {
+        return res.status(500).json({ message: `Error fetching tags: ${err.message}` });
+    }
+}
+
+async function getAllTags(req, res) {
+    const user = req.user;
+
+    try {
+        const tagsDocument = await Tags.findOne({ religion: user.religion });
+
+        if (!tagsDocument) {
+            return res.status(404).json({ message: 'No tags found for this religion' });
+        }
+
+        return res.status(200).json(tagsDocument.tags);
+    } catch (err) {
+        return res.status(500).json({ message: `Error fetching tags: ${err.message}` });
     }
 }
 
@@ -203,8 +294,9 @@ async function vote(req, res) {
 }
 
 async function getAllQuestion(req, res) {
+    const user = req.user;
     try {
-        const questions = await Question.find().sort({ createdAt: -1 });
+        const questions = await Question.find({religion: user.religion}).sort({ createdAt: -1 });
         const response = [];
         
         for (const question of questions) {
@@ -388,5 +480,8 @@ async function voteToReply(req, res) {
         voteToReply,
         sortReplies,
         getQuestionbyTags,
-        getUserQuestion
+        getUserQuestion,
+        createOrAddTags,
+        getTags,
+        getAllTags
     };

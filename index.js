@@ -19,6 +19,9 @@ const io = socketIo(server, {
     credentials: true,
   }
 });
+app.get("/", (req, res) => {
+  res.send("Working");
+});
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });

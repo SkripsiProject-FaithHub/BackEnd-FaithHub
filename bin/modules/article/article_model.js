@@ -38,6 +38,11 @@ const articleSchema = new mongoose.Schema({
         type: Array,
         default: [],
     },
+    
+    religion: {
+        type: String
+      }
+    ,
 
     upVotes: {
         type: Array,
