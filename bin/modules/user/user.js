@@ -41,6 +41,39 @@ async function registerUser(req, res) {
     }
 }
 
+async function registerAdmin(req, res) {
+    const { name ,email, password, religion } = req.body;
+    try {
+        // Validate email
+        // if (!validator.isEmail(email)) {
+        //     return res.status(400).json({ message: 'Invalid email address' });
+        // }
+
+        // // Validate password
+        // if (!isStrongPassword(password)) {
+        //     return res.status(400).json({ message: 'Password must contain at least 1 special character' });
+        // }
+
+        // Check if user already exists
+        const existingUser = await UserModel.findOne({ email });
+        if (existingUser) {
+            return res.status(409).json({ message: 'Email already exists' });
+        }
+
+        // Create user
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const userId = uuidv4();
+        const newUser = new UserModel({ userId, name, email, password: hashedPassword, religion, role: 'admin' });
+        
+        await newUser.save();
+
+        res.status(201).json({ message: 'User registered successfully' });
+    } catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).json({ message: 'Failed to register user' });
+    }
+}
+
 async function login(req, res) {
     const { email, password } = req.body;
     console.log("login requested");
@@ -111,5 +144,6 @@ module.exports = {
     login,
     authMiddleware,
     protectedRoute,
-    myProfile
+    myProfile,
+    registerAdmin
 };
