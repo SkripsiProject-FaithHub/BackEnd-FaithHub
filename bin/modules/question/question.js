@@ -5,30 +5,13 @@ const User = require('../user/user_model');
 const Reply = require('../question/replyModel');
 const { v4: uuidv4 } = require('uuid');
 const Tags = require('./tags_model'); // Adjust path accordingly
+const Article = require('../article/article_model'); // Adjust path accordingly
 // const catchAsync = require('../utils/catchAsync');
+const cloudinary = require('cloudinary').v2;
+const Audio = require('../question/audio_model');
 
 // const secretKey = process.env.SECRET_KEY;
 
-
-
-// async function createOrAddTags(religion, newTags) {
-//     try {
-//         let tagsDocument = await Tags.findOne({ religion });
-
-//         if (!tagsDocument) {
-//             tagsDocument = await Tags.create({ religion, tags: Array.isArray(newTags) ? newTags : [newTags] });
-//         } else {
-//             // Ensure newTags is an array, then push each tag into the existing tags array
-//             const tagsToAdd = Array.isArray(newTags) ? newTags : [newTags];
-//             tagsToAdd.forEach(tag => {
-//                 tagsDocument.tags.push(tag);
-//             });
-//             await tagsDocument.save();
-//         }
-//     } catch (err) {
-//         throw new Error(`Failed to create or add tags for religion ${religion}: ${err.message}`);
-//     }
-// }
 
 async function createOrAddTags(religion, newTags) {
     try {
@@ -440,6 +423,63 @@ async function voteToReply(req, res) {
             res.status(500).json(err);
         }
     }
+
+    async function searchContent(req, res) {
+        const { query } = req.query;
+        const user = req.user;
+    
+        // Ensure `query` is a string and sanitize it
+        const sanitizedQuery = typeof query === 'string' ? query : '';
+    
+        try {
+            // Query for questions
+            const questions = await Question.find({
+                religion: user.religion,
+                $or: [
+                    { questionTitle: { $regex: sanitizedQuery, $options: 'i' } },
+                    { description: { $regex: sanitizedQuery, $options: 'i' } }
+                ]
+            }).sort({ createdAt: -1 });
+    
+            // Query for articles
+            const articles = await Article.find({
+                religion: user.religion,
+                $or: [
+                    { articleTitle: { $regex: sanitizedQuery, $options: 'i' } },
+                    { description: { $regex: sanitizedQuery, $options: 'i' } }
+                ]
+            }).sort({ createdAt: -1 });
+    
+            const response = {
+                questions: [],
+                articles: []
+            };
+    
+            // Populate questions
+            for (const question of questions) {
+                const userDetails = await User.findOne({ userId: question.creatorId });
+                const reqInfo = {
+                    name: userDetails.name,
+                };
+                response.questions.push({ doubtDetails: question, ownerInfo: reqInfo });
+            }
+    
+            // Populate articles
+            for (const article of articles) {
+                const userDetails = await User.findOne({ userId: article.creatorId });
+                const reqInfo = {
+                    name: userDetails.name,
+                };
+                response.articles.push({ articleDetails: article, ownerInfo: reqInfo });
+            }
+    
+            res.status(200).json(response);
+        } catch (err) {
+            console.error(err);
+            res.status(500).json("Error occurred while searching for questions! Please try again.");
+        }
+    }
+    
     
     async function sortReplies(req, res) {
         const { questionId } = req.params;
@@ -468,6 +508,72 @@ async function voteToReply(req, res) {
             res.status(500).json(err);
         }
     }
+
+    //Audio Funtion
+    const uploadAudio = async (req, res) => {
+        const { audioTitle, tags} = req.body;
+        const file = req.file;
+        const user = req.user;
+
+        const allowedMimeTypes = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/mp4', 'audio/m4a'];
+        try {
+          
+          console.log(file, audioTitle, tags);
+          if (!file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+            return res.status(422).json({ message: 'Invalid file type. Please upload an audio file.' });
+        }
+          const result = await cloudinary.uploader.upload(file.path, {
+            resource_type: 'video', // Cloudinary treats audio files as videos
+            folder: 'faithHub_audio',
+        });
+          const audioDuration = `${Math.floor(result.duration / 60)}:${Math.floor(result.duration % 60)}`;
+
+      
+          const newAudio = new Audio({
+            audioId : uuidv4(),
+            audioTitle,
+            tags,
+            audio: result.secure_url,
+            creatorId: user.userId,
+            createdAt: Date.now(),
+            duration: audioDuration,
+            religion: user.religion,
+            url: result.secure_url,
+          });
+      
+          await newAudio.save();
+          res.status(201).json({ message: 'Audio uploaded successfully', audio: newAudio });
+        } catch (error) {
+          console.error('Error uploading audio:', error);
+          res.status(500).json({ message: 'Error uploading audio' });
+        }
+      };
+
+      const getAudio = async (req, res) => {
+        const user = req.user;
+        try {
+          const audioLists = await Audio.find({religion: user.religion}).sort({ createdAt: -1 });
+          const response = [];
+          for (const audioList of audioLists) {
+           
+            const userDetails = await User.findOne({userId: audioList?.creatorId});
+            const reqInfo = new Object({
+                name: userDetails?.name,
+                // photo: userDetails?.photo,
+                // reputation: userDetails?.reputation
+            });
+            response.push({ audioDetail: audioList, ownerInfo: reqInfo });
+        }
+          res.status(200).json(response);
+        } catch (error) {
+          console.error('Error fetching audio:', error);
+          res.status(500).json({ message: 'Error fetching audio' });
+        }
+      };
     
     module.exports = {
         createQuestion,
@@ -483,5 +589,8 @@ async function voteToReply(req, res) {
         getUserQuestion,
         createOrAddTags,
         getTags,
-        getAllTags
+        getAllTags,
+        searchContent,
+        uploadAudio,
+        getAudio
     };

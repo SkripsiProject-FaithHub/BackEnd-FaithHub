@@ -13,7 +13,7 @@
         "dest": "/bin/app/routes/user.js"
       },
       {
-        "src": "/api/question/(create|update|delete|reply|vote|fetchAll|getTags|getAllTags|getQuestionbyTags|getUserQuestion|getDetail|sortReplies)/:questionId*",
+        "src": "/api/question/(create|update|delete|reply|vote|fetchAll|getTags|getAllTags|uploadAudio|getAudioContent|getQuestionbyTags|searchContent|getUserQuestion|getDetail|sortReplies)/:questionId*",
         "methods": ["POST", "PUT", "DELETE", "GET"],
         "dest": "/bin/app/routes/question.js"
       },

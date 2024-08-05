@@ -2,12 +2,13 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
-const connectDB = require('./bin/helpers/databases/connection');
+const {connect, connectCloudinary} = require('./bin/helpers/databases/connection');
 const authRoutes = require('./bin/app/routes/user');
 const questionRoutes = require('./bin/app/routes/question');
 const articleRoutes = require('./bin/app/routes/article');
-const cloudinary = require("cloudinary").v2;
-const multer = require("multer");
+const dotenv = require('dotenv');
+dotenv.config();
+
 
 const app = express();
 const PORT = process.env.PORT || 9001;
@@ -23,14 +24,10 @@ app.get("/", (req, res) => {
   res.send("Working");
 });
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
-
 app.use(cors({
   origin: "http://localhost:9000",
   credentials: true,
 }));
-app.use(upload.array());
 app.use(express.json());
 
 // Socket.io connection handling
@@ -76,14 +73,8 @@ app.use('/api/question', questionRoutes);
 app.use('/api/article', articleRoutes);
 
 // Database connection
-connectDB();
-
-// Cloudinary configuration
-cloudinary.config({
-  cloud_name: process.env.CLOUD_NAME,
-  api_key: process.env.CLOUD_API_KEY,
-  api_secret: process.env.CLOUD_SECRET_KEY,
-});
+connect();
+connectCloudinary();
 
 // Start the server
 server.listen(PORT, () => {
